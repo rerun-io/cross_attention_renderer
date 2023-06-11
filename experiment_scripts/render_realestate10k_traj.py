@@ -1,5 +1,5 @@
 """
-checkpoint (*WITH SOFTRAS SPLIT*) under 
+checkpoint (*WITH SOFTRAS SPLIT*) under
 /om2/user/sitzmann/logs/light_fields/NMR_hyper_1e2_reg_layernorm/64_256_None/checkpoints/model_epoch_0087_iter_250000.pth
 """
 
@@ -45,11 +45,10 @@ p.add_argument('--category', type=str, default='donut')
 p.add_argument('--conditioning', type=str, default='hyper')
 p.add_argument('--experiment_name', type=str, required=True)
 p.add_argument('--num_context', type=int, default=0)
-p.add_argument('--batch_size', type=int, default=48)
 p.add_argument('--max_num_instances', type=int, default=None)
 p.add_argument('--num_trgt', type=int, default=1)
 p.add_argument('--gpus', type=int, default=1)
-p.add_argument('--views', type=int, default=1)
+p.add_argument('--views', type=int, default=2)
 
 # General training options
 p.add_argument('--lr', type=float, default=5e-4)
@@ -93,7 +92,7 @@ def render_data(model_input, scene, model):
     uv = model_input['query']['uv']
     nrays = uv.size(-2)
 
-    chunks = nrays // 8192
+    chunks = nrays // 4096
     z = model.get_z(model_input)
 
     query_cam2world = model_input['query']['cam2world']
@@ -171,7 +170,7 @@ def render_data(model_input, scene, model):
             lpip = loss_fn_alex(rgb_lpips, target_lpips).item()
             lpips_list.append(lpip)
 
-            ssim = structural_similarity(rgb_np, target_np, win_size=11, multichannel=True, gaussian_weights=True)
+            ssim = structural_similarity(rgb_np, target_np, win_size=11, multichannel=True, gaussian_weights=True, channel_axis=2, data_range=2.0)
             ssims.append(ssim)
 
             print("mse, psnr, lpip, ssim", np.mean(mses), np.mean(psnrs), np.mean(lpips_list), np.mean(ssims))
@@ -182,7 +181,6 @@ def render_data(model_input, scene, model):
 
             writer.append_data(rgb_np)
 
-    pass
 
 def render(gpu, opt):
     if opt.gpus > 1:
@@ -191,7 +189,7 @@ def render(gpu, opt):
     torch.cuda.set_device(gpu)
 
     test_dataset = RealEstate10k(img_root="data_download/realestate/test",
-                                 pose_root="poses/realestate/test.mat",
+                                 pose_root="data_download/realestate/test_poses",
                                  num_ctxt_views=1, num_query_views=1, query_sparsity=256,
                                  )
 
@@ -207,12 +205,12 @@ def render(gpu, opt):
 
     model = model.cuda()
     scenes = [s.stem for s in test_dataset.all_scenes]
-
+    
     for idx in range(200):
         all_scene = test_dataset.all_scenes[idx]
 
         try:
-            data = get_camera_pose(all_scene, "data_download/realestate/RealEstate10K/test", test_dataset.uv, views=opt.views)
+            data = get_camera_pose(all_scene, "data_download/realestate/test_poses", test_dataset.uv, views=opt.views)
         except:
             continue
 
