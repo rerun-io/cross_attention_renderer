@@ -2,20 +2,23 @@ ConfigArgParse==1.5.3
 easydict==1.9
 einops==0.6.0
 h5py==3.6.0
-imageio==2.9.0
 jaxtyping==0.2.14
+imageio==2.31.0
 lpips==0.1.4
 matplotlib==3.5.1
-numpy==1.19.2
-pytorch3d==0.7.2
+numpy==1.23
+pytorch3d @ https://github.com/facebookresearch/pytorch3d/archive/refs/tags/v0.7.4.zip
 PyYAML==6.0
 roma==1.2.6
-scikit_image==0.18.3
-scipy==1.7.3
-skimage==0.0
+scikit-image==0.21.0
+scipy==1.10.1
 timm==0.5.4
-torch==1.9.0
-torchvision==0.10.0
+torch==2.0.1
+torchvision==0.15.2
 tqdm==4.62.3
 typeguard==2.13.3
 typing_extensions==4.5.0
+--pre -f https://build.rerun.io/commit/370e16f/wheels
+rerun-sdk==0.7.0a0+2023.6.9.370e16f
+
+
