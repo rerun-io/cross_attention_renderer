@@ -8,6 +8,8 @@ import os
 # Enable import from parent package
 import sys
 
+import numpy.typing as npt
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/../")
 import random
@@ -60,6 +62,35 @@ def make_circle(n, radius=0.2):
     return coord
 
 
+def log_image(
+    camera_entity: str,
+    rgb: npt.ArrayLike,
+    world_from_camera: npt.ArrayLike,
+    intrinsics: npt.ArrayLike,
+    timeless=False,
+) -> None:
+    rgb_entity = f"{camera_entity}/rgb"
+    width, height = rgb.shape[:2]
+    rr.log_transform3d(
+        camera_entity,
+        rr.TranslationAndMat3(world_from_camera[:3, 3], world_from_camera[:3, :3]),
+        timeless=timeless,
+    )
+    rr.log_view_coordinates(
+        camera_entity,
+        xyz="RDF",
+        timeless=timeless,
+    )
+    rr.log_pinhole(
+        rgb_entity,
+        child_from_parent=intrinsics[:3, :3],
+        width=width,
+        height=height,
+        timeless=timeless,
+    )
+    rr.log_image(rgb_entity, rgb, timeless=timeless)
+
+
 def render_data(model_input, scene, model, rerun_vis):
     model_input = util.dict_to_gpu(model_input)
 
@@ -94,30 +125,14 @@ def render_data(model_input, scene, model, rerun_vis):
             zip(context_rgbs[0], context_cam2worlds[0], context_intrinsics[0])
         ):
             rgb = rgb.numpy(force=True)
+            rgb = (np.clip(rgb, -1, 1) + 1) / 2  # transform to [0, 1] range
             wfc = wfc.numpy(force=True)
             intrinsic = intrinsic.numpy(force=True)
-            width, height = rgb.shape[:2]
 
             # log input views
-            rr.log_transform3d(
-                f"world/input_images/camera_#{i}",
-                rr.TranslationAndMat3(wfc[:3, 3], wfc[:3, :3]),
-                from_parent=False,
-                timeless=True,
+            log_image(
+                f"world/input_images/camera_#{i}", rgb, wfc, intrinsic, timeless=True
             )
-            rr.log_view_coordinates(
-                f"world/input_images/camera_#{i}",
-                xyz="RDF",
-                timeless=True,
-            )
-            rr.log_pinhole(
-                f"world/input_images/camera_#{i}/rgb",
-                child_from_parent=intrinsic[:3, :3],
-                width=width,
-                height=height,
-                timeless=True,
-            )
-            rr.log_image(f"world/input_images/camera_#{i}/rgb", rgb, timeless=True)
 
     writer = get_writer(f"vis/{scene_path}.mp4")
     loss_fn_alex = lpips.LPIPS(net="vgg").cuda()
@@ -152,7 +167,6 @@ def render_data(model_input, scene, model, rerun_vis):
 
             for k in model_outputs[0].keys():
                 outputs = [model_output[k] for model_output in model_outputs]
-                print(k, [output.size() for output in outputs])
                 val = torch.cat(outputs, dim=-2)
                 model_output_full[k] = val
 
@@ -167,6 +181,14 @@ def render_data(model_input, scene, model, rerun_vis):
 
             rgb = (rgb + 1) / 2.0
             target = (rgb_gt + 1) / 2
+
+            rr.set_time_sequence("frame_id", i)
+            log_image(
+                "world/prediction",
+                rgb,
+                model_input["query"]["cam2world"][0, 0].numpy(force=True),
+                model_input["query"]["intrinsics"][0, 0].numpy(force=True),
+            )
 
             rgb = torch.Tensor(rgb).cuda()
             target = torch.Tensor(target).cuda()
