@@ -7,6 +7,7 @@ import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from matplotlib import colormaps
 
 import geometry
 from encoder import ImageEncoder, SpatialEncoder, UNetEncoder
@@ -14,6 +15,11 @@ from epipolar import project_rays
 from midas import dpt_depth, midas_net, midas_net_custom
 from resnet_block_fc import ResnetFC
 from utils import util
+
+# define mapping from integer to RGB
+_index_to_color = lambda x, cmap="tab10": np.array(
+    colormaps[cmap](x % colormaps[cmap].N)[:-1]
+)
 
 
 def encode_relative_ray(ray, transform):
@@ -351,7 +357,7 @@ class CrossAttentionRenderer(nn.Module):
             pixel_val = torch.flatten(pixel_val, 0, 1)
 
         # Gather corresponding features on line
-        interp_val_orig = interp_val = torch.cat(
+        interp_val = torch.cat(
             [
                 F.grid_sample(
                     latent,
@@ -376,25 +382,6 @@ class CrossAttentionRenderer(nn.Module):
                 self.W,
                 context["intrinsics"].flatten(0, 1),
             )
-
-            if vis_ray is not None:
-                # check if ray in uv
-                vis_ray = torch.tensor(vis_ray, device=ray_dir.device)
-                vis_ray_mask = torch.all(query["uv"][0, 0] == vis_ray, dim=-1)
-                ray_in_uv = vis_ray_mask.any().item()
-                if ray_in_uv:
-                    points_on_rays = pt[:, vis_ray_mask].squeeze().numpy(force=True)
-                    for i, points_on_ray in enumerate(points_on_rays):
-                        mask = np.linalg.norm(points_on_ray, axis=-1) < 10.0
-                        rr.log_points(
-                            f"world/input_images/camera_#{i}/points_#{i}",
-                            points_on_ray[mask],
-                            radii=0.02,
-                            class_ids=i,
-                        )
-                        # TODO log points in 2D also
-
-            # breakpoint()
 
             context_rel_cam2world_view1 = torch.matmul(
                 torch.inverse(context["cam2world"][:, 0:1]), context["cam2world"]
@@ -520,6 +507,55 @@ class CrossAttentionRenderer(nn.Module):
             interp_val = torch.stack(
                 [interp_val_1_avg, interp_val_2_avg], dim=1
             ).flatten(0, 1)
+
+            if vis_ray is not None:
+                # check if ray in uv
+                vis_ray = torch.tensor(vis_ray, device=ray_dir.device)
+                vis_ray_mask = torch.all(query["uv"][0, 0] == vis_ray, dim=-1)
+                ray_in_uv = vis_ray_mask.any().item()
+                if ray_in_uv:
+                    points_on_rays = pt[:, vis_ray_mask].squeeze().numpy(force=True)
+                    for i, points_on_ray in enumerate(points_on_rays):
+                        # mask points that are far away otherwise 3D vis does not
+                        #  behave well
+                        mask = np.linalg.norm(points_on_ray, axis=-1) < 10.0
+                        rr.log_points(
+                            f"world/input_images/camera_#{i}/points_#{i}",
+                            points_on_ray[mask],
+                            # radii=0.03,
+                            colors=_index_to_color(i),
+                        )
+
+                    pri_pxs_on_rays = (
+                        pixel_val[:, vis_ray_mask].squeeze().numpy(force=True)
+                    )
+
+                    for i, pri_pxs_on_ray in enumerate(pri_pxs_on_rays):
+                        # log primary points
+                        rr.log_points(
+                            f"world/input_images/camera_#{i}/rgb/primary_#{i}",
+                            0.5 * (pri_pxs_on_ray + 1) * np.array([self.H, self.W]),
+                            # radii=2,
+                            colors=_index_to_color(i),
+                        )
+
+                    sec_pxs_on_rays = (
+                        pixel_val_stack[:, vis_ray_mask].squeeze().numpy(force=True)
+                    )
+
+                    for i, sec_pxs_on_ray in enumerate(sec_pxs_on_rays):
+                        other = (i + 1) % 2
+
+                        # log secondary points with brighter color
+                        rr.log_points(
+                            f"world/input_images/camera_#{i}/rgb/secondary_#{other}",
+                            0.5 * (sec_pxs_on_ray + 1) * np.array([self.H, self.W]),
+                            # radii=2,
+                            colors=0.4 + 0.6 * _index_to_color(other),
+                        )
+
+                    # TODO log ray in 3D
+
         elif (self.n_view == 3) and not self.no_latent_concat:
             # Find the nearest neighbor latent in the other 2 frames when given 3 views
             pt, _, _, _ = geometry.get_3d_point_epipolar(
