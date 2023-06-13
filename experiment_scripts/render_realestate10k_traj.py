@@ -62,6 +62,22 @@ def make_circle(n, radius=0.2):
     return coord
 
 
+def log_current_outputs(model_outputs, world_from_camera, intrinsics) -> None:
+    rgb_outputs = [model_output["rgb"][0,0] for model_output in model_outputs]
+    rgb = torch.cat(rgb_outputs, dim=-2)
+    rgb = (rgb.clip(-1, 1) + 1) / 2.0  # transform to [0, 1] range
+    full_rgb = torch.zeros(256*256, 3, device=rgb.device)
+    full_rgb[:len(rgb)] = rgb
+    full_rgb = full_rgb.view(256, 256, 3).numpy(force=True)
+
+    log_image(
+        "world/prediction",
+        full_rgb,
+        world_from_camera,
+        intrinsics,
+    )
+
+
 def log_image(
     camera_entity: str,
     rgb: npt.ArrayLike,
@@ -143,8 +159,12 @@ def render_data(model_input, scene, model, rerun_vis):
 
     with torch.no_grad():
         for i in tqdm(range(nrender)):
+            rr.set_time_sequence("frame_id", i)
+
             model_input["query"]["cam2world"] = query_cam2world[:, i : i + 1]
             model_input["query"]["intrinsics"] = query_intrinsic[:, i : i + 1]
+            cam2world_np = model_input["query"]["cam2world"][0, 0].numpy(force=True)
+            intrinsics_np = model_input["query"]["intrinsics"][0, 0].numpy(force=True)
 
             uv_i = uv[:, i : i + 1]
 
@@ -154,7 +174,11 @@ def render_data(model_input, scene, model, rerun_vis):
 
             for uv_chunk in uv_chunks:
                 model_input["query"]["uv"] = uv_chunk
-                model_output = model(model_input, z=z)
+                model_output = model(
+                    model_input,
+                    z=z,
+                    vis_ray=(50, 80) if rerun_vis else None,
+                )
                 del model_output["z"]
                 del model_output["coords"]
                 del model_output["uv"]
@@ -162,6 +186,12 @@ def render_data(model_input, scene, model, rerun_vis):
                 del model_output["at_wts"]
 
                 model_outputs.append(model_output)
+
+                log_current_outputs(
+                    model_outputs,
+                    cam2world_np,
+                    intrinsics_np,
+                )
 
             model_output_full = {}
 
@@ -181,14 +211,6 @@ def render_data(model_input, scene, model, rerun_vis):
 
             rgb = (rgb + 1) / 2.0
             target = (rgb_gt + 1) / 2
-
-            rr.set_time_sequence("frame_id", i)
-            log_image(
-                "world/prediction",
-                rgb,
-                model_input["query"]["cam2world"][0, 0].numpy(force=True),
-                model_input["query"]["intrinsics"][0, 0].numpy(force=True),
-            )
 
             rgb = torch.Tensor(rgb).cuda()
             target = torch.Tensor(target).cuda()
@@ -228,6 +250,9 @@ def render_data(model_input, scene, model, rerun_vis):
             rgb_np = (((rgb_np + 1) / 2) * 255).astype(np.uint8)
 
             writer.append_data(rgb_np)
+
+            if i > 3:
+                break
 
     writer.close()
 
