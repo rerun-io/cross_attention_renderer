@@ -2,6 +2,7 @@ import time
 from copy import deepcopy
 
 import numpy as np
+import rerun as rr
 import timm
 import torch
 import torch.nn as nn
@@ -216,9 +217,7 @@ class CrossAttentionRenderer(nn.Module):
 
         return z
 
-    def forward(
-        self, input, z=None, val=False, debug=False, vis_ray=None
-    ):
+    def forward(self, input, z=None, val=False, debug=False, vis_ray=None):
         out_dict = {}
         input = deepcopy(input)
 
@@ -292,15 +291,6 @@ class CrossAttentionRenderer(nn.Module):
 
             camera_origin = geometry.get_ray_origin(query_cam2world)
             ray_dir = lf_coords[..., :3]
-
-            if vis_ray is not None:
-                # check if ray in uv
-                vis_ray = torch.tensor(vis_ray, device=ray_dir.device)
-                ray_in_uv = torch.all(query["uv"][0,0]==vis_ray, dim=-1).any().item()
-                if ray_in_uv:
-                    pass
-
-            # breakpoint()
 
             extrinsics = (
                 torch.eye(4)
@@ -386,6 +376,25 @@ class CrossAttentionRenderer(nn.Module):
                 self.W,
                 context["intrinsics"].flatten(0, 1),
             )
+
+            if vis_ray is not None:
+                # check if ray in uv
+                vis_ray = torch.tensor(vis_ray, device=ray_dir.device)
+                vis_ray_mask = torch.all(query["uv"][0, 0] == vis_ray, dim=-1)
+                ray_in_uv = vis_ray_mask.any().item()
+                if ray_in_uv:
+                    points_on_rays = pt[:, vis_ray_mask].squeeze().numpy(force=True)
+                    for i, points_on_ray in enumerate(points_on_rays):
+                        mask = np.linalg.norm(points_on_ray, axis=-1) < 10.0
+                        rr.log_points(
+                            f"world/input_images/camera_#{i}/points_#{i}",
+                            points_on_ray[mask],
+                            radii=0.02,
+                            class_ids=i,
+                        )
+                        # TODO log points in 2D also
+
+            # breakpoint()
 
             context_rel_cam2world_view1 = torch.matmul(
                 torch.inverse(context["cam2world"][:, 0:1]), context["cam2world"]

@@ -149,6 +149,7 @@ def render_data(model_input, scene, model, rerun_vis):
             log_image(
                 f"world/input_images/camera_#{i}", rgb, wfc, intrinsic, timeless=True
             )
+            # TODO add visualization of depth (depth_ray key in model_outputs)
 
     writer = get_writer(f"vis/{scene_path}.mp4")
     loss_fn_alex = lpips.LPIPS(net="vgg").cuda()
@@ -177,7 +178,7 @@ def render_data(model_input, scene, model, rerun_vis):
                 model_output = model(
                     model_input,
                     z=z,
-                    vis_ray=(50, 80) if rerun_vis else None,
+                    vis_ray=(205, 105) if rerun_vis else None,
                 )
                 del model_output["z"]
                 del model_output["coords"]
@@ -187,11 +188,11 @@ def render_data(model_input, scene, model, rerun_vis):
 
                 model_outputs.append(model_output)
 
-                log_current_outputs(
-                    model_outputs,
-                    cam2world_np,
-                    intrinsics_np,
-                )
+            log_current_outputs(
+                model_outputs,
+                cam2world_np,
+                intrinsics_np,
+            )
 
             model_output_full = {}
 
@@ -251,8 +252,8 @@ def render_data(model_input, scene, model, rerun_vis):
 
             writer.append_data(rgb_np)
 
-            if i > 3:
-                break
+            # if i > 3:
+            #     break
 
     writer.close()
 
