@@ -7,6 +7,7 @@ import os
 
 # Enable import from parent package
 import sys
+from typing import Optional
 
 import numpy.typing as npt
 
@@ -63,48 +64,63 @@ def make_circle(n, radius=0.2):
 
 
 def log_current_outputs(model_outputs, world_from_camera, intrinsics) -> None:
-    rgb_outputs = [model_output["rgb"][0,0] for model_output in model_outputs]
+    rgb_outputs = [model_output["rgb"][0, 0] for model_output in model_outputs]
     rgb = torch.cat(rgb_outputs, dim=-2)
     rgb = (rgb.clip(-1, 1) + 1) / 2.0  # transform to [0, 1] range
-    full_rgb = torch.zeros(256*256, 3, device=rgb.device)
-    full_rgb[:len(rgb)] = rgb
+    full_rgb = torch.zeros(256 * 256, 3, device=rgb.device)
+    full_rgb[: len(rgb)] = rgb
     full_rgb = full_rgb.view(256, 256, 3).numpy(force=True)
+
+    depth_outputs = [
+        model_output["depth_ray"][0, :, 0] for model_output in model_outputs
+    ]
+    depth = torch.cat(depth_outputs, dim=0)
+    full_depth = torch.zeros(256 * 256, device=depth.device)
+    full_depth[: len(depth)] = depth
+    full_depth = full_depth.view(256, 256).numpy(force=True)
 
     log_image(
         "world/prediction",
         full_rgb,
         world_from_camera,
         intrinsics,
+        depth=full_depth
     )
 
 
 def log_image(
-    camera_entity: str,
+    camera_entity_path: str,
     rgb: npt.ArrayLike,
     world_from_camera: npt.ArrayLike,
     intrinsics: npt.ArrayLike,
     timeless=False,
+    depth: Optional[npt.ArrayLike] = None,
 ) -> None:
-    rgb_entity = f"{camera_entity}/rgb"
+    image_entity_path = f"{camera_entity_path}/image"
+    rgb_entity_path = f"{image_entity_path}/rgb"
     width, height = rgb.shape[:2]
     rr.log_transform3d(
-        camera_entity,
+        camera_entity_path,
         rr.TranslationAndMat3(world_from_camera[:3, 3], world_from_camera[:3, :3]),
         timeless=timeless,
     )
     rr.log_view_coordinates(
-        camera_entity,
+        camera_entity_path,
         xyz="RDF",
         timeless=timeless,
     )
     rr.log_pinhole(
-        rgb_entity,
+        image_entity_path,
         child_from_parent=intrinsics[:3, :3],
         width=width,
         height=height,
         timeless=timeless,
     )
-    rr.log_image(rgb_entity, rgb, timeless=timeless)
+    rr.log_image(rgb_entity_path, rgb, timeless=timeless)
+
+    if depth is not None:
+        depth_entity_path = f"{image_entity_path}/depth"
+        rr.log_depth_image(depth_entity_path, depth, meter=1.0, timeless=timeless)
 
 
 def render_data(model_input, scene, model, rerun_vis):
@@ -147,9 +163,8 @@ def render_data(model_input, scene, model, rerun_vis):
 
             # log input views
             log_image(
-                f"world/input_images/camera_#{i}", rgb, wfc, intrinsic, timeless=True
+                f"world/input_#{i}", rgb, wfc, intrinsic, timeless=True
             )
-            # TODO add visualization of depth (depth_ray key in model_outputs)
 
     writer = get_writer(f"vis/{scene_path}.mp4")
     loss_fn_alex = lpips.LPIPS(net="vgg").cuda()
@@ -285,11 +300,8 @@ def render(gpu, opt):
         model.load_state_dict(state_dict["model"], strict=not opt.reconstruct)
 
     model = model.cuda()
-    scenes = [s.stem for s in test_dataset.all_scenes]
 
-    # TODO (iterate over all and add param to only eval specified scene)
-    for idx in range(1):
-        all_scene = test_dataset.all_scenes[idx]
+    for all_scene in test_dataset.all_scenes:
 
         try:
             data = get_camera_pose(

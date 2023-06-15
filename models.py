@@ -520,7 +520,7 @@ class CrossAttentionRenderer(nn.Module):
                         #  behave well
                         mask = np.linalg.norm(points_on_ray, axis=-1) < 10.0
                         rr.log_points(
-                            f"world/input_images/camera_#{i}/points_#{i}",
+                            f"world/input_#{i}/points_#{i}",
                             points_on_ray[mask],
                             # radii=0.03,
                             colors=_index_to_color(i),
@@ -533,7 +533,7 @@ class CrossAttentionRenderer(nn.Module):
                     for i, pri_pxs_on_ray in enumerate(pri_pxs_on_rays):
                         # log primary points
                         rr.log_points(
-                            f"world/input_images/camera_#{i}/rgb/primary_#{i}",
+                            f"world/input_#{i}/image/primary_#{i}",
                             0.5 * (pri_pxs_on_ray + 1) * np.array([self.H, self.W]),
                             # radii=2,
                             colors=_index_to_color(i),
@@ -548,7 +548,7 @@ class CrossAttentionRenderer(nn.Module):
 
                         # log secondary points with brighter color
                         rr.log_points(
-                            f"world/input_images/camera_#{i}/rgb/secondary_#{other}",
+                            f"world/input_#{i}/image/secondary_#{other}",
                             0.5 * (sec_pxs_on_ray + 1) * np.array([self.H, self.W]),
                             # radii=2,
                             colors=0.4 + 0.6 * _index_to_color(other),
