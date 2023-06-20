@@ -998,7 +998,7 @@ class CrossAttentionRenderer(nn.Module):
                         f"world/input_#{i}/points_#{i}",
                         points_on_ray[mask],
                         # radii=0.03,
-                        colors=_index_to_color(i),
+                        colors=_index_to_color(2*i),
                     )
 
                 pri_pxs_on_rays = (
