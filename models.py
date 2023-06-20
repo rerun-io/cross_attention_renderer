@@ -17,7 +17,7 @@ from resnet_block_fc import ResnetFC
 from utils import util
 
 # define mapping from integer to RGB
-_index_to_color = lambda x, cmap="tab10": np.array(
+_index_to_color = lambda x, cmap="tab20": np.array(
     colormaps[cmap](x % colormaps[cmap].N)[:-1]
 )
 
@@ -536,7 +536,7 @@ class CrossAttentionRenderer(nn.Module):
                             f"world/input_#{i}/image/primary_#{i}",
                             0.5 * (pri_pxs_on_ray + 1) * np.array([self.H, self.W]),
                             # radii=2,
-                            colors=_index_to_color(i),
+                            colors=_index_to_color(2*i),
                         )
 
                     sec_pxs_on_rays = (
@@ -551,9 +551,10 @@ class CrossAttentionRenderer(nn.Module):
                             f"world/input_#{i}/image/secondary_#{other}",
                             0.5 * (sec_pxs_on_ray + 1) * np.array([self.H, self.W]),
                             # radii=2,
-                            colors=0.4 + 0.6 * _index_to_color(other),
+                            colors=_index_to_color(2*other + 1),
                         )
 
+                    # log ray
                     ray_direction = geometry.get_ray_directions(
                         vis_uv[None, None],
                         cam2world=input["query"]["cam2world"][0],
@@ -568,7 +569,7 @@ class CrossAttentionRenderer(nn.Module):
                             ray_origin.numpy(force=True),
                             (ray_origin + 50 * ray_direction).numpy(force=True),
                         ],
-                        # radii=2,
+                        color=_index_to_color(5).tolist(),
                     )
 
         elif (self.n_view == 3) and not self.no_latent_concat:

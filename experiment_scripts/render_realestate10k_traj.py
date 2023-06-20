@@ -157,6 +157,7 @@ def render_data(model_input, scene, model, rerun_vis):
         rr.init("wide_baseline")
         rr.save(f"vis/{scene_path}.rrd")
         rr.log_view_coordinates("world", up="-Y", timeless=True)
+        rr.log_point("world/prediction/image/uv", VIS_UV, radius=4.0, timeless=True, color=models._index_to_color(5).tolist())
 
         for i, (rgb, wfc, intrinsic) in enumerate(
             zip(context_rgbs[0], context_cam2worlds[0], context_intrinsics[0])
