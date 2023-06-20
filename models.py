@@ -223,7 +223,7 @@ class CrossAttentionRenderer(nn.Module):
 
         return z
 
-    def forward(self, input, z=None, val=False, debug=False, vis_ray=None):
+    def forward(self, input, z=None, val=False, debug=False, vis_uv=None):
         out_dict = {}
         input = deepcopy(input)
 
@@ -508,10 +508,10 @@ class CrossAttentionRenderer(nn.Module):
                 [interp_val_1_avg, interp_val_2_avg], dim=1
             ).flatten(0, 1)
 
-            if vis_ray is not None:
+            if vis_uv is not None:
                 # check if ray in uv
-                vis_ray = torch.tensor(vis_ray, device=ray_dir.device)
-                vis_ray_mask = torch.all(query["uv"][0, 0] == vis_ray, dim=-1)
+                vis_uv = torch.tensor(vis_uv, device=ray_dir.device)
+                vis_ray_mask = torch.all(query["uv"][0, 0] == vis_uv, dim=-1)
                 ray_in_uv = vis_ray_mask.any().item()
                 if ray_in_uv:
                     points_on_rays = pt[:, vis_ray_mask].squeeze().numpy(force=True)
@@ -555,7 +555,7 @@ class CrossAttentionRenderer(nn.Module):
                         )
 
                     ray_direction = geometry.get_ray_directions(
-                        vis_ray[None, None],
+                        vis_uv[None, None],
                         cam2world=input["query"]["cam2world"][0],
                         intrinsics=input["query"]["intrinsics"][0],
                     )[0, 0]

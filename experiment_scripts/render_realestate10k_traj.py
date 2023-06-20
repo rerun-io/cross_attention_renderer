@@ -29,6 +29,8 @@ import models
 from dataset.realestate10k_dataio import RealEstate10k, get_camera_pose
 from utils import util
 
+VIS_UV = (205, 105)
+
 img2mse = lambda x, y: torch.mean((x - y) ** 2)
 mse2psnr = lambda x: -10.0 * torch.log(x) / torch.log(torch.Tensor([10.0]).to(x.device))
 
@@ -43,6 +45,9 @@ p.add_argument("--model", type=str, default="midas_vit")
 p.add_argument("--checkpoint_path", default=None)
 opt = p.parse_args()
 
+
+# TODO optional spiral trajectory
+# TODO log uv point in query image 2d
 
 def sync_model(model):
     for param in model.parameters():
@@ -193,7 +198,7 @@ def render_data(model_input, scene, model, rerun_vis):
                 model_output = model(
                     model_input,
                     z=z,
-                    vis_ray=(205, 105) if rerun_vis else None,
+                    vis_uv=VIS_UV if rerun_vis else None,
                 )
                 del model_output["z"]
                 del model_output["coords"]
