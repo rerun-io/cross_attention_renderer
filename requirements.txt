@@ -18,7 +18,4 @@ torchvision==0.15.2
 tqdm==4.62.3
 typeguard==2.13.3
 typing_extensions==4.5.0
---pre -f https://build.rerun.io/commit/370e16f/wheels
-rerun-sdk==0.7.0a0+2023.6.9.370e16f
-
-
+rerun-sdk==0.7.0
