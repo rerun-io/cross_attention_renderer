@@ -554,7 +554,22 @@ class CrossAttentionRenderer(nn.Module):
                             colors=0.4 + 0.6 * _index_to_color(other),
                         )
 
-                    # TODO log ray in 3D
+                    ray_direction = geometry.get_ray_directions(
+                        vis_ray[None, None],
+                        cam2world=input["query"]["cam2world"][0],
+                        intrinsics=input["query"]["intrinsics"][0],
+                    )[0, 0]
+                    ray_origin = geometry.get_ray_origin(
+                        input["query"]["cam2world"][0, 0]
+                    )
+                    rr.log_line_segments(
+                        f"world/ray",
+                        positions=[
+                            ray_origin.numpy(force=True),
+                            (ray_origin + 50 * ray_direction).numpy(force=True),
+                        ],
+                        # radii=2,
+                    )
 
         elif (self.n_view == 3) and not self.no_latent_concat:
             # Find the nearest neighbor latent in the other 2 frames when given 3 views
