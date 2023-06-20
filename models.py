@@ -508,70 +508,6 @@ class CrossAttentionRenderer(nn.Module):
                 [interp_val_1_avg, interp_val_2_avg], dim=1
             ).flatten(0, 1)
 
-            if vis_uv is not None:
-                # check if ray in uv
-                vis_uv = torch.tensor(vis_uv, device=ray_dir.device)
-                vis_ray_mask = torch.all(query["uv"][0, 0] == vis_uv, dim=-1)
-                ray_in_uv = vis_ray_mask.any().item()
-                if ray_in_uv:
-                    points_on_rays = pt[:, vis_ray_mask].squeeze().numpy(force=True)
-                    for i, points_on_ray in enumerate(points_on_rays):
-                        # mask points that are far away otherwise 3D vis does not
-                        #  behave well
-                        mask = np.linalg.norm(points_on_ray, axis=-1) < 10.0
-                        rr.log_points(
-                            f"world/input_#{i}/points_#{i}",
-                            points_on_ray[mask],
-                            # radii=0.03,
-                            colors=_index_to_color(i),
-                        )
-
-                    pri_pxs_on_rays = (
-                        pixel_val[:, vis_ray_mask].squeeze().numpy(force=True)
-                    )
-
-                    for i, pri_pxs_on_ray in enumerate(pri_pxs_on_rays):
-                        # log primary points
-                        rr.log_points(
-                            f"world/input_#{i}/image/primary_#{i}",
-                            0.5 * (pri_pxs_on_ray + 1) * np.array([self.H, self.W]),
-                            # radii=2,
-                            colors=_index_to_color(2*i),
-                        )
-
-                    sec_pxs_on_rays = (
-                        pixel_val_stack[:, vis_ray_mask].squeeze().numpy(force=True)
-                    )
-
-                    for i, sec_pxs_on_ray in enumerate(sec_pxs_on_rays):
-                        other = (i + 1) % 2
-
-                        # log secondary points with brighter color
-                        rr.log_points(
-                            f"world/input_#{i}/image/secondary_#{other}",
-                            0.5 * (sec_pxs_on_ray + 1) * np.array([self.H, self.W]),
-                            # radii=2,
-                            colors=_index_to_color(2*other + 1),
-                        )
-
-                    # log ray
-                    ray_direction = geometry.get_ray_directions(
-                        vis_uv[None, None],
-                        cam2world=input["query"]["cam2world"][0],
-                        intrinsics=input["query"]["intrinsics"][0],
-                    )[0, 0]
-                    ray_origin = geometry.get_ray_origin(
-                        input["query"]["cam2world"][0, 0]
-                    )
-                    rr.log_line_segments(
-                        f"world/ray",
-                        positions=[
-                            ray_origin.numpy(force=True),
-                            (ray_origin + 50 * ray_direction).numpy(force=True),
-                        ],
-                        color=_index_to_color(5).tolist(),
-                    )
-
         elif (self.n_view == 3) and not self.no_latent_concat:
             # Find the nearest neighbor latent in the other 2 frames when given 3 views
             pt, _, _, _ = geometry.get_3d_point_epipolar(
@@ -1043,5 +979,79 @@ class CrossAttentionRenderer(nn.Module):
 
         # Return the multiview latent for each image (so we can cache computation of multiview encoder)
         out_dict["z"] = z_orig
+
+
+        # visualization only supports standard setup (2 views + concat, i.e., as
+        #  described in paper) right now
+        if vis_uv is not None and self.n_view == 2 and (not self.no_latent_concat):
+            # check if ray in uv
+            vis_uv = torch.tensor(vis_uv, device=ray_dir.device)
+            vis_ray_mask = torch.all(query["uv"][0, 0] == vis_uv, dim=-1)
+            ray_in_uv = vis_ray_mask.any().item()
+            if ray_in_uv:
+                points_on_rays = pt[:, vis_ray_mask].squeeze().numpy(force=True)
+                for i, points_on_ray in enumerate(points_on_rays):
+                    # mask points that are far away otherwise 3D vis does not
+                    #  behave well
+                    mask = np.linalg.norm(points_on_ray, axis=-1) < 10.0
+                    rr.log_points(
+                        f"world/input_#{i}/points_#{i}",
+                        points_on_ray[mask],
+                        # radii=0.03,
+                        colors=_index_to_color(i),
+                    )
+
+                pri_pxs_on_rays = (
+                    pixel_val[:, vis_ray_mask].squeeze().numpy(force=True)
+                )
+
+                for i, pri_pxs_on_ray in enumerate(pri_pxs_on_rays):
+                    # log primary points
+                    rr.log_points(
+                        f"world/input_#{i}/image/primary_#{i}",
+                        0.5 * (pri_pxs_on_ray + 1) * np.array([self.H, self.W]),
+                        # radii=2,
+                        colors=_index_to_color(2*i),
+                    )
+
+                sec_pxs_on_rays = (
+                    pixel_val_stack[:, vis_ray_mask].squeeze().numpy(force=True)
+                )
+
+                for i, sec_pxs_on_ray in enumerate(sec_pxs_on_rays):
+                    other = (i + 1) % 2
+
+                    # log secondary points with brighter color
+                    rr.log_points(
+                        f"world/input_#{i}/image/secondary_#{other}",
+                        0.5 * (sec_pxs_on_ray + 1) * np.array([self.H, self.W]),
+                        # radii=2,
+                        colors=_index_to_color(2*other + 1),
+                    )
+
+                # log ray
+                ray_direction = geometry.get_ray_directions(
+                    vis_uv[None, None],
+                    cam2world=input["query"]["cam2world"][0],
+                    intrinsics=input["query"]["intrinsics"][0],
+                )[0, 0]
+                ray_origin = geometry.get_ray_origin(
+                    input["query"]["cam2world"][0, 0]
+                )
+                rr.log_line_segments(
+                    f"world/ray",
+                    positions=[
+                        ray_origin.numpy(force=True),
+                        (ray_origin + 50 * ray_direction).numpy(force=True),
+                    ],
+                    color=_index_to_color(5).tolist(),
+                )
+
+                attention_weights_per_image = out_dict["at_wt"][:,vis_ray_mask].squeeze()  # shape (2, 64)
+                for i, attention_weights in enumerate(attention_weights_per_image):
+                    rr.log_tensor(
+                        f"world/input_#{i}/attention",
+                        attention_weights
+                    )
 
         return out_dict
