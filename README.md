@@ -11,8 +11,7 @@ MIT
 
 This is the implementation of the paper "Learning to Render Novel Views from Wide-Baseline Stereo Pairs", which has been modified to use [Rerun](https://github.com/rerun-io/rerun) for visualization.
 
-# TODO replace with rerun video.
-
+https://github.com/roym899/cross_attention_renderer/assets/9785832/28fcad4d-efdc-4667-a989-5cadb5d63270
 
 ## Google Colab
 If you want to experiment with our approach, we have written a [Colab](https://colab.research.google.com/drive/1PeL5oJ_eraLEdzTEVPLBwoM2pyv26WcU?usp=sharing).
