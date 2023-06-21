@@ -1,6 +1,6 @@
 import os
 
-mode = 'satori'
+mode = 'default'
 
 if mode == 'satori':
     logging_root = '/nobackup/users/yilundu/my_repos/local_lightfield_networks/logs'
@@ -18,3 +18,8 @@ elif mode == 'local':
     figures_root = '/home/sitzmann/test'
     data_root = '/home/sitzmann/test'
     os.environ["TORCH_HOME"] = '/home/sitzmann/test'
+elif mode == 'default':
+    logging_root = './logs/'
+    results_root = './logs/'
+    figures_root = './logs/'
+    data_root = './data/'

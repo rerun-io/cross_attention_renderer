@@ -197,8 +197,8 @@ class RealEstate10k():
         self.query_sparsity = query_sparsity
 
         all_im_dir = Path(img_root)
-        # self.all_pose_dir = Path(pose_root)
-        self.all_pose = loadmat(pose_root)
+        self.all_pose_dir = Path(pose_root)
+        # self.all_pose = loadmat(pose_root)
         self.lpips = lpips
         self.eval = eval
 

@@ -1,6 +1,6 @@
 import matplotlib
 import torch.nn.functional as F
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import numpy as np
 import random
 import matplotlib.pyplot as plt

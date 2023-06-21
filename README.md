@@ -9,10 +9,9 @@
 <br>
 MIT
 
-This is a official implementation of the paper "Learning to Render Novel Views from Wide-Baseline Stereo Pairs". 
+This is the implementation of the paper "Learning to Render Novel Views from Wide-Baseline Stereo Pairs", which has been modified to use [Rerun](https://github.com/rerun-io/rerun) for visualization.
 
-https://user-images.githubusercontent.com/5572232/217013655-7cf89735-a683-4077-825f-33a6692d4f47.mp4
-
+https://github.com/roym899/cross_attention_renderer/assets/9785832/28fcad4d-efdc-4667-a989-5cadb5d63270
 
 ## Google Colab
 If you want to experiment with our approach, we have written a [Colab](https://colab.research.google.com/drive/1PeL5oJ_eraLEdzTEVPLBwoM2pyv26WcU?usp=sharing).
@@ -65,16 +64,13 @@ You can evaluate the results of the trained model using
 python experiment_scripts/eval_realestate10k.py --experiment_name vis_realestate --batch_size 12 --gpus 1 --checkpoint_path logs/realestate/checkpoints/model_current.pth
 ```
 
-You can also visualize the results of applying the trained model on videos using the command
+You can visualize the results of applying the trained model on videos using the command
 ```
-python experiment_scripts/render_realestate10k_traj.py --experiment_name vis_realestate --batch_size 12 --gpus 1 --checkpoint_path logs/realestate/checkpoints/model_current.pth
+python experiment_scripts/render_realestate10k_traj.py --experiment_name vis_realestate --batch_size 12 --gpus 1 --checkpoint_path logs/realestate/checkpoints/model_current.pth --rerun_vis
 ```
 
-and on unposed images using
+This will create videos and `.rrd` files in the `./vis/` directory. To play back an `.rrd` file use `rerun {filename}.rrd`.
 
-```
-python experiment_scripts/render_unposed_traj.py --experiment_name vis_realestate --batch_size 12 --gpus 1 --checkpoint_path logs/realestate/checkpoints/model_current.pth
-```
 
 ## Citation
 If you find our work useful in your research, consider cite:
