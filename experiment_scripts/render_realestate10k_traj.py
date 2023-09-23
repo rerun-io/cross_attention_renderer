@@ -19,6 +19,7 @@ import configargparse
 import lpips
 import numpy as np
 import rerun as rr
+import rerun.experimental as rr2
 import torch
 import torch.distributed as dist
 from imageio import get_writer
@@ -82,11 +83,7 @@ def log_current_outputs(model_outputs, world_from_camera, intrinsics) -> None:
     full_depth = full_depth.view(256, 256).numpy(force=True)
 
     log_image(
-        "world/prediction",
-        full_rgb,
-        world_from_camera,
-        intrinsics,
-        depth=full_depth
+        "world/prediction", full_rgb, world_from_camera, intrinsics, depth=full_depth
     )
 
 
@@ -101,28 +98,32 @@ def log_image(
     image_entity_path = f"{camera_entity_path}/image"
     rgb_entity_path = f"{image_entity_path}/rgb"
     width, height = rgb.shape[:2]
-    rr.log_transform3d(
+    rr2.log(
         camera_entity_path,
-        rr.TranslationAndMat3(world_from_camera[:3, 3], world_from_camera[:3, :3]),
+        rr2.dt.TranslationAndMat3x3(
+            world_from_camera[:3, 3], world_from_camera[:3, :3]
+        ),
         timeless=timeless,
     )
-    rr.log_view_coordinates(
+    rr2.log(
         camera_entity_path,
-        xyz="RDF",
+        rr2.ViewCoordinates.RDF,
         timeless=timeless,
     )
-    rr.log_pinhole(
+    rr2.log(
         image_entity_path,
-        child_from_parent=intrinsics[:3, :3],
-        width=width,
-        height=height,
+        rr2.Pinhole(
+            image_from_camera=intrinsics[:3, :3],
+            width=width,
+            height=height,
+        ),
         timeless=timeless,
     )
-    rr.log_image(rgb_entity_path, rgb, timeless=timeless)
+    rr2.log(rgb_entity_path, rr2.Image(rgb), timeless=timeless)
 
     if depth is not None:
         depth_entity_path = f"{image_entity_path}/depth"
-        rr.log_depth_image(depth_entity_path, depth, meter=1.0, timeless=timeless)
+        rr2.log(depth_entity_path, rr2.DepthImage(depth, meter=1.0), timeless=timeless)
 
 
 def render_data(model_input, scene, model, rerun_vis):
@@ -153,8 +154,12 @@ def render_data(model_input, scene, model, rerun_vis):
     if rerun_vis:
         rr.init("wide_baseline")
         rr.save(f"vis/{scene_path}.rrd")
-        rr.log_view_coordinates("world", up="-Y", timeless=True)
-        rr.log_point("world/prediction/image/uv", VIS_UV, radius=4.0, timeless=True, color=models._index_to_color(5).tolist())
+        rr2.log("world", rr2.ViewCoordinates.RDF, timeless=True)
+        rr2.log(
+            "world/prediction/image/uv",
+            rr2.Points2D(VIS_UV, radii=4.0, colors=models._index_to_color(5)),
+            timeless=True,
+        )
 
         for i, (rgb, wfc, intrinsic) in enumerate(
             zip(context_rgbs[0], context_cam2worlds[0], context_intrinsics[0])
@@ -165,9 +170,7 @@ def render_data(model_input, scene, model, rerun_vis):
             intrinsic = intrinsic.numpy(force=True)
 
             # log input views
-            log_image(
-                f"world/input_#{i}", rgb, wfc, intrinsic, timeless=True
-            )
+            log_image(f"world/input_#{i}", rgb, wfc, intrinsic, timeless=True)
 
     writer = get_writer(f"vis/{scene_path}.mp4")
     loss_fn_alex = lpips.LPIPS(net="vgg").cuda()

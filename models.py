@@ -2,7 +2,7 @@ import time
 from copy import deepcopy
 
 import numpy as np
-import rerun as rr
+import rerun.experimental as rr2
 import timm
 import torch
 import torch.nn as nn
@@ -994,11 +994,12 @@ class CrossAttentionRenderer(nn.Module):
                     # mask points that are far away otherwise 3D vis does not
                     #  behave well
                     mask = np.linalg.norm(points_on_ray, axis=-1) < 10.0
-                    rr.log_points(
+                    rr2.log(
                         f"world/input_#{i}/points_#{i}",
-                        points_on_ray[mask],
-                        # radii=0.03,
-                        colors=_index_to_color(2*i),
+                        rr2.Points3D(
+                            positions=points_on_ray[mask],
+                            colors=_index_to_color(2*i),
+                        )
                     )
 
                 pri_pxs_on_rays = (
@@ -1007,11 +1008,12 @@ class CrossAttentionRenderer(nn.Module):
 
                 for i, pri_pxs_on_ray in enumerate(pri_pxs_on_rays):
                     # log primary points
-                    rr.log_points(
+                    rr2.log(
                         f"world/input_#{i}/image/primary_#{i}",
-                        0.5 * (pri_pxs_on_ray + 1) * np.array([self.H, self.W]),
-                        # radii=2,
-                        colors=_index_to_color(2*i),
+                        rr2.Points2D(
+                            positions=0.5 * (pri_pxs_on_ray + 1) * np.array([self.H, self.W]),
+                            colors=_index_to_color(2*i),
+                        )
                     )
 
                 sec_pxs_on_rays = (
@@ -1022,11 +1024,12 @@ class CrossAttentionRenderer(nn.Module):
                     other = (i + 1) % 2
 
                     # log secondary points with brighter color
-                    rr.log_points(
+                    rr2.log(
                         f"world/input_#{i}/image/secondary_#{other}",
-                        0.5 * (sec_pxs_on_ray + 1) * np.array([self.H, self.W]),
-                        # radii=2,
-                        colors=_index_to_color(2*other + 1),
+                        rr2.Points2D(
+                            positions=0.5 * (sec_pxs_on_ray + 1) * np.array([self.H, self.W]),
+                            colors=_index_to_color(2*other + 1),
+                        )
                     )
 
                 # log ray
@@ -1038,20 +1041,22 @@ class CrossAttentionRenderer(nn.Module):
                 ray_origin = geometry.get_ray_origin(
                     input["query"]["cam2world"][0, 0]
                 )
-                rr.log_line_segments(
+                rr2.log(
                     f"world/ray",
-                    positions=[
-                        ray_origin.numpy(force=True),
-                        (ray_origin + 50 * ray_direction).numpy(force=True),
-                    ],
-                    color=_index_to_color(5).tolist(),
+                    rr2.LineStrips3D(
+                        strips=[[
+                            ray_origin.numpy(force=True),
+                            (ray_origin + 50 * ray_direction).numpy(force=True),
+                        ]],
+                        colors=_index_to_color(5),
+                    )
                 )
 
                 attention_weights_per_image = out_dict["at_wt"][:,vis_ray_mask].squeeze()  # shape (2, 64)
                 for i, attention_weights in enumerate(attention_weights_per_image):
-                    rr.log_tensor(
+                    rr2.log(
                         f"world/input_#{i}/attention",
-                        attention_weights
+                        rr2.Tensor(attention_weights)
                     )
 
         return out_dict
