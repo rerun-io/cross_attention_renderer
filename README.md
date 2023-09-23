@@ -66,7 +66,7 @@ python experiment_scripts/eval_realestate10k.py --experiment_name vis_realestate
 
 You can visualize the results of applying the trained model on videos using the command
 ```
-python experiment_scripts/render_realestate10k_traj.py --experiment_name vis_realestate --batch_size 12 --gpus 1 --checkpoint_path logs/realestate/checkpoints/model_current.pth --rerun_vis
+python experiment_scripts/render_realestate10k_traj.py --gpus 1 --checkpoint_path logs/realestate/checkpoints/model_current.pth --rerun_vis
 ```
 
 This will create videos and `.rrd` files in the `./vis/` directory. To play back an `.rrd` file use `rerun {filename}.rrd`.
