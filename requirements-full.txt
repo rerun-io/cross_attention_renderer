@@ -65,8 +65,7 @@ PyWavelets==1.4.1
 PyYAML==6.0
 requests==2.31.0
 requests-oauthlib==1.3.1
---pre -f https://build.rerun.io/commit/370e16f/wheels
-rerun-sdk==0.7.0
+rerun-sdk>=0.9.1
 roma==1.2.6
 rsa==4.9
 scikit-image==0.21.0

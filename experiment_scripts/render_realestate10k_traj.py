@@ -99,8 +99,8 @@ def log_image(
     width, height = rgb.shape[:2]
     rr.log(
         camera_entity_path,
-        rr.TranslationAndMat3x3(
-            world_from_camera[:3, 3], world_from_camera[:3, :3]
+        rr.Transform3D(
+            translation=world_from_camera[:3, 3], mat3x3=world_from_camera[:3, :3]
         ),
         timeless=timeless,
     )
