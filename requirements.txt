@@ -7,7 +7,7 @@ imageio==2.31.0
 lpips==0.1.4
 matplotlib==3.5.1
 numpy==1.23
-pytorch3d @ https://github.com/facebookresearch/pytorch3d/archive/refs/tags/v0.7.4.zip
+pytorch3d @ git+https://github.com/facebookresearch/pytorch3d.git@v0.7.4
 PyYAML==6.0
 roma==1.2.6
 scikit-image==0.21.0
@@ -18,4 +18,4 @@ torchvision==0.15.2
 tqdm==4.62.3
 typeguard==2.13.3
 typing_extensions==4.5.0
-rerun-sdk==0.7.0
+rerun-sdk>=0.9.1
